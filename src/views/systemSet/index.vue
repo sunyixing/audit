@@ -1,0 +1,188 @@
+<template title="账号列表">
+  <div>
+    <el-row>
+      <el-col :span="24">
+        <el-card>
+          <div slot="header" class="clearfix">
+            <div style="float:left">
+              <span>账号列表</span>
+            </div>
+          </div>
+            <div class="btn-wrap clearfix">
+              <div style="float:left" class="btn">
+                <el-button type="primary" @click="EditAccounts('')">新建账号</el-button>
+              </div>
+              <div style="float:right;">
+                <el-input :placeholder="selectType==1?'请输入账号':'请输入姓名'" v-model="selectWord" class="input-with-select" style="width:360px;" @keyup.enter.native="handleCurrentChange(1)">
+                  <el-select v-model="selectType" slot="prepend" placeholder="请选择" style="width:125px;" >
+                    <el-option label="账号" :value=1></el-option>
+                    <el-option label="姓名" :value=2></el-option>
+                  </el-select>
+                  <el-button slot="append" type="primary"  @click="handleCurrentChange(1)">搜索</el-button>
+                </el-input>                
+              </div>
+            </div>
+            <el-table :data="tableData" style="width: 100%" :header-cell-style="{background:'#F1F2F9',color:'#474B64',fontSize: '14px',height:'48px',opacity: '0.7',fontFamily: 'PingFangSC-Regular, PingFang SC',fontWeight: '400'}">
+              <el-table-column prop="account" label="账号" min-width="120"  >
+              </el-table-column>
+              <!-- <el-table-column prop="pwd" label="密码" min-width="120">
+              </el-table-column> -->
+              <el-table-column prop="name" label="姓名" min-width="120"  >
+              </el-table-column>
+              <el-table-column prop="updateTime" label="更新时间" min-width="160">
+                <template slot-scope="scope">
+                  {{changeDate(scope.row.updateTime)}}
+                </template>
+              </el-table-column>
+              <el-table-column prop="updateUser" label="操作人" min-width="120">
+              </el-table-column>
+              <el-table-column prop="remarks" label="备注" min-width="120">
+              </el-table-column>
+              <el-table-column label="操作" fixed="right" min-width="120" align="center">
+                <template slot-scope="scope">
+                  <el-button  type="text"   @click="EditAccounts(scope.row.id)" style="color:#3546A4;">编辑</el-button>
+                  <el-button  type="text"   @click="delte(scope.row.id)" style="color:#3546A4;">删除</el-button>
+                </template>
+              </el-table-column>
+            </el-table>
+          <div class="pagination">
+            <el-pagination background @current-change="handleCurrentChange" :page-size="10"
+              layout="total,prev, pager, next" :total="tableTotal" :current-page="cuPage">
+            </el-pagination>
+          </div>
+        </el-card>
+      </el-col>
+    </el-row>
+
+  </div>
+</template>
+<style lang="scss"  scoped>
+</style>
+<script>
+  import util from "../../utils/";
+  import api from '../../utils/apiConstant';
+  export default {
+    beforeRouteEnter: function (to, from, next) {
+      next(function (vm) {
+        // util.setAuth(to.path,vm);
+      });
+    },
+    data() {
+      return {
+        //筛选项
+        selectType:1,
+        selectWord:'',
+        //表格数据
+        tableData: [],
+        tableTotal: 3,
+        cuPage: 1,
+        pageSize:10,
+        // 表单字段
+        InfoForm: {
+          id: "",
+          remarks: "",
+          supplierName: "",
+          supplierPhone: "",
+          supplierAddress: "",
+          updateTime: "",
+          updateUser: localStorage.getItem('name'),
+        },
+        
+      };
+    },
+    watch: {
+    },
+    mounted() {
+      // if(this.$route.meta.id!=undefined || this.$route.meta.id!=null){
+      //   //获取页面权限
+      //   util.postData(api.btnGet+'/'+localStorage.getItem('id')+'/'+this.$route.meta.id, {}, this).then(result => {
+      //     result.data.map(item =>{
+      //       this.$set(this.authBtn,item.path , true);
+      //     })
+      //     console.log(this.authBtn);
+      //   }).catch(_ => {});
+      // }
+      // //初始化加载首页
+      this.handleCurrentChange(1);
+    },
+    created(){
+
+    },
+    methods: {
+      //获取用户列表
+      getList(){
+        let para={
+          page:this.cuPage,
+          pageSize:this.pageSize,
+          columnData:{}
+        };
+        this.selectWord=this.selectWord.replace(/^\s+|\s+$/g,"");
+        switch(this.selectType)
+        {
+            case 1:
+                para.columnData.account=this.selectWord;
+                break;
+            case 2:
+                para.columnData.name=this.selectWord;
+                break;
+            default:
+                ""
+        }
+        util.postData(api.getUserListP, para, this).then(result => {
+          let res=result.result;
+          this.tableData=res.content;
+          this.tableTotal=res.totalElements;
+        }).catch(_ => {
+
+        });
+      },
+      //处理日期
+      changeDate(date){
+        return util.formatT(new Date(date),'-');
+      },
+      // 新建账号
+      EditAccounts: function (id) {
+        this.$router.push({
+            name: "userAdd",
+            query: {id:''}  
+        });
+      },
+      // 编辑账号
+      EditAccounts: function (id) {
+        this.$router.push({
+            name: "userAdd",
+            query: {id:id}  
+        });
+      },
+      delte:function(id){
+            this.$confirm('是否删除账号？', '提示', {
+              confirmButtonText: '确定',
+              cancelButtonText: '取消',
+              type: 'warning'
+            }).then(() => {
+              util.deleteData(api.deleteUser, {id:id}, this).then(result => {
+                this.$message({
+                  type: 'success',
+                  message: '删除成功!'
+                });
+                 this.handleCurrentChange(1);
+              }).catch(_ => {
+
+              });
+            }).catch(() => {
+              
+            });
+      },
+      //清除数据
+      clearData: function () {
+
+      },
+      // 分页导航
+      handleCurrentChange(val) {
+        this.cuPage=val;
+        this.getList();
+      },
+    }
+  };
+
+</script>
